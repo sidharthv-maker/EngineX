@@ -4,12 +4,14 @@ A Python-based search engine project built from scratch, starting with a web-cra
 
 ## Current Progress
 
-The project contains an initial crawler prototype that:
+The project contains a breadth-first web-crawler that:
 - Fetches a web-page using HTTP requests
 - Parses HTML using BeautifulSoup
-- Extracts the page title
-- Extracts paragraph tags from the page
-- Displays the first five paragraphs' contents
+- Extracts article links from WikiPedia pages
+- Filters non-article links
+- Uses a queue-based BFS traversal strategy
+- Avoids re-visiting previously discovered pages
+- Extracts and stores page title, page URL and page content
 
 ## Technologies Used
 - Python 3
