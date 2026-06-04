@@ -1,55 +1,52 @@
 import requests
 from bs4 import BeautifulSoup
 from collections import deque
+from db import connect, init_db
 
-# Fetch data from WikiPedia!
-response = requests.get("https://en.wikipedia.org/wiki/Search_Engine", headers = {"User-Agent": "Mozilla/5.0"})
+# Initiate the data-base!
+init_db()
+connection = connect()
 
-# Convert the text obtained from the website into a navigate-able tree!
-soup = BeautifulSoup(response.text, "html.parser")
-
-# Extract links from the web-page!
-links = soup.find_all("a")
-print("Link Count:", len(links))
-
-# Print content for 2 page(s)!
-articleLinks = deque()
+articleLinks = deque() # Process link(s) in breadth-first manner!
 alreadyVisited = set() # Prevent visiting duplicate page(s)!
 discovered = set() # Prevent adding duplicate page(s) to queue!
-visitedCount = 0
+visitedCount = 0 # Limit number of pages visited!
 baseLink = "https://en.wikipedia.org"
-visitedPages = []
 
-for link in links:
-    current = link.get("href")
-    if current and current.startswith("/wiki/") and ":" not in current and current not in discovered:
-        discovered.add(current)
-        articleLinks.append(current)
+# Fetch data from WikiPedia!
+seed = ["https://en.wikipedia.org/wiki/Search_engine", "https://en.wikipedia.org/wiki/Web_crawler", "https://en.wikipedia.org/wiki/PageRank", "https://en.wikipedia.org/wiki/Information_retrieval"]
+for current in seed:
+    articleLinks.append(current.replace(baseLink, ""))
+    discovered.add(current.replace(baseLink, ""))
 
-while visitedCount < 2 and len(articleLinks) != 0:
+while visitedCount < 10 and len(articleLinks) != 0:
     current = articleLinks.popleft()
     if current not in alreadyVisited:
         alreadyVisited.add(current)
         fullLink = baseLink + current
-        innerResponse = requests.get(fullLink, headers = {"User-Agent": "Mozilla/5.0"})
-        innerSoup = BeautifulSoup(innerResponse.text, "html.parser")
+        print(f"Crawling: {fullLink}")
+        response = requests.get(fullLink, headers = {"User-Agent": "Mozilla/5.0"})
 
-        innerParagraphs = innerSoup.find_all("p")
+        # Only visit page if status code is 200, else don't!
+        if response.status_code != 200:
+            continue
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        paragraphs = soup.find_all("p")
         content = ""
-        for passage in innerParagraphs:
+        for passage in paragraphs:
             content = content + passage.text + "\n"
 
-        currentPage = {"Title":innerSoup.title.text, "URL":fullLink, "Content":content}
-        visitedPages.append(currentPage)
+        connection.execute("""INSERT OR IGNORE INTO pages(url, title, content) VALUES(?, ?, ?)""", (fullLink, soup.title.text, content))
 
-        innerLinks = innerSoup.find_all("a")
-        for innerLink in innerLinks:
-            innerCurrent = innerLink.get("href")
-            if innerCurrent and innerCurrent.startswith("/wiki/") and ":" not in innerCurrent and innerCurrent not in alreadyVisited and innerCurrent not in discovered:
-                discovered.add(innerCurrent)
-                articleLinks.append(innerCurrent)
+        links = soup.find_all("a")
+        for link in links:
+            current = link.get("href")
+            if current and current.startswith("/wiki/") and ":" not in current and current not in alreadyVisited and current not in discovered:
+                discovered.add(current)
+                articleLinks.append(current)
         visitedCount = visitedCount + 1
 
-for page in visitedPages:
-    print(f"{page['Title']} - {page['URL']}")
-    print(page['Content'])
+connection.commit()
+connection.close()
