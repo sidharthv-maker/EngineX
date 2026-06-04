@@ -1,0 +1,16 @@
+# SQLite database (rebuilt locally from schema.sql + crawler)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
