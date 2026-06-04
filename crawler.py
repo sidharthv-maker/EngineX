@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from collections import deque
 from db import connect, init_db
+import time
 
 # Initiate the data-base!
 init_db()
@@ -11,6 +12,7 @@ articleLinks = deque() # Process link(s) in breadth-first manner!
 alreadyVisited = set() # Prevent visiting duplicate page(s)!
 discovered = set() # Prevent adding duplicate page(s) to queue!
 visitedCount = 0 # Limit number of pages visited!
+maximumPagesVisited = 50 # Maximum number of pages allowed to be visited!
 baseLink = "https://en.wikipedia.org"
 
 # Fetch data from WikiPedia!
@@ -19,7 +21,7 @@ for current in seed:
     articleLinks.append(current.replace(baseLink, ""))
     discovered.add(current.replace(baseLink, ""))
 
-while visitedCount < 10 and len(articleLinks) != 0:
+while visitedCount < maximumPagesVisited and len(articleLinks) != 0:
     current = articleLinks.popleft()
     if current not in alreadyVisited:
         alreadyVisited.add(current)
@@ -47,6 +49,7 @@ while visitedCount < 10 and len(articleLinks) != 0:
                 discovered.add(current)
                 articleLinks.append(current)
         visitedCount = visitedCount + 1
+        time.sleep(0.5)
 
 connection.commit()
 connection.close()
