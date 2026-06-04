@@ -33,16 +33,32 @@ def index_page(conn, page_row):
             (term_id, doc_id, tf),
         )
 
+def index_all_pages(conn):
+    # Wipe and rebuild — simplest correct behavior for re-runs.
+    conn.execute("DELETE FROM postings")
+    conn.execute("DELETE FROM doc_stats")
+    conn.execute("DELETE FROM terms")
+
+    rows = conn.execute("SELECT id, title, content FROM pages").fetchall()
+    for i, page in enumerate(rows):
+        index_page(conn, page)
+        if i % 100 == 0:
+            print(f"  {i}/{len(rows)}")
+    # Backfill df: for each term, count how many distinct docs it appears in.
+    conn.execute("""
+        UPDATE terms SET df = (
+            SELECT COUNT(*) FROM postings WHERE term_id = terms.id
+        )
+    """)
+
 #guard
 
 if __name__ == "__main__":
     with connect() as conn:
-        page = conn.execute(
-            "SELECT id, title, content FROM pages LIMIT 1"
-        ).fetchone()
-        if page is None:
-            print("No pages in DB - insert a test row first.")
+        n = conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
+        if n == 0:
+            print("No pages in DB - insert test rows first.")
         else:
-            index_page(conn, page)
-            print(f"Indexed page {page['id']}: {page['title']}")
+            index_all_pages(conn)
+            print(f"Indexed {n} page(s).")
 
