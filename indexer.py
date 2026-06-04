@@ -4,6 +4,7 @@ from db import connect
 nlp = spacy.load("en_core_web_sm")
 
 def prop_token(text):
+    #preprocess properly
     voc = nlp(text)
     lst = []
     for txt in voc:
@@ -16,6 +17,7 @@ def index_document(text):
     return Counter(terms), len(terms)
 
 def index_page(conn, page_row):
+    #index each page separately
     doc_id = page_row["id"]
     text = (page_row["title"] or "") + " " + (page_row["content"] or "")
     term_freqs, doc_length = index_document(text)
@@ -42,17 +44,17 @@ def index_all_pages(conn):
     rows = conn.execute("SELECT id, title, content FROM pages").fetchall()
     for i, page in enumerate(rows):
         index_page(conn, page)
+        #progress bar
         if i % 100 == 0:
             print(f"  {i}/{len(rows)}")
-    # Backfill df: for each term, count how many distinct docs it appears in.
+    #count of number of distinct docs it appears in.
     conn.execute("""
         UPDATE terms SET df = (
             SELECT COUNT(*) FROM postings WHERE term_id = terms.id
         )
     """)
-
+    
 #guard
-
 if __name__ == "__main__":
     with connect() as conn:
         n = conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
